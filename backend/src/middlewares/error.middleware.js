@@ -1,47 +1,45 @@
-import CustomError from "../utils/customError.js"
+import CustomError from "../utils/customError.js";
 
 export const errorMiddleware = (err, req, res, next) => {
-    err.statusCode = err.statusCode || 500
+    err.statusCode = err.statusCode || 500;
 
-    console.log(err)
+    let error = { ...err };
 
-    let error = { ...err }
+    error.message = err.message;
 
-    error.message = err.message
-
+    // Mongoose Cast Error
     if (err.name === 'CastError') {
-        const message = `Resource not found. Invalid: ${err.path}`
-        error = new ErrorHandler(message, 400)
+        const message = `Resource not found. Invalid: ${err.path}`;
+        error = new CustomError(400, message);
     }
 
-    // Handling Mongoose Validation Error
+    // Mongoose Validation Error
     if (err.name === 'ValidationError') {
-        const message = Object.values(err.errors).map(value => value.message);
-        error = new ErrorHandler(message, 400)
+        const message = Object.values(err.errors).map(value => value.message).join(", ");
+        error = new CustomError(400, message);
     }
 
-    // Handling Mongoose duplicate key errors
+    // Duplicate key error
     if (err.code === 11000) {
-        const message = `Duplicate ${Object.keys(err.keyValue)} entered`
-        error = new ErrorHandler(message, 400)
+        const message = `Duplicate ${Object.keys(err.keyValue)} entered`;
+        error = new CustomError(400, message);
     }
 
-    // Handling wrong JWT error
+    // Invalid JWT Error
     if (err.name === 'JsonWebTokenError') {
-        const message = 'JSON Web Token is invalid. Try Again!!!'
-        error = new ErrorHandler(message, 400)
+        const message = 'JSON Web Token is invalid. Try Again!';
+        error = new CustomError(400, message);
     }
 
-    // Handling Expired JWT error
+    // Expired JWT Error
     if (err.name === 'TokenExpiredError') {
-        const message = 'JSON Web Token is expired. Try Again!!!'
-        error = new ErrorHandler(message, 400)
+        const message = 'JSON Web Token is expired. Try Again!';
+        error = new CustomError(400, message);
     }
 
+    // Send the error response
     res.status(error.statusCode || 500).json({
         success: false,
-        message: error.message || "internal server error",
-        // error: err,
-        // stack: err.stack
-    })
-}
+        message: error.message || "Internal server error",
+    });
+};

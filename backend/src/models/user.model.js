@@ -21,8 +21,11 @@ const userSchema = new mongoose.Schema(
         },
         dob: {
             type: Date,
-            required: true,
+            default: 0
         },
+        image: {
+            type: String
+        }
     },
     { timestamp: true }
 );

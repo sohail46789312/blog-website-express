@@ -3,6 +3,7 @@ import CustomError from "../utils/customError.js"
 import User from "../models/user.model.js"
 import { sendToken } from "../utils/sendToken.js"
 import bcryptjs from "bcryptjs"
+import { uploadToCloudinary } from "../utils/cloudinary.js"
 
 export const getUser = catchAsyncError(async (req, res, next) => {
     try {
@@ -29,11 +30,14 @@ export const registerUser = catchAsyncError(async (req, res, next) => {
             return next(new CustomError(400, "this email already exists"))
         }
 
+        let result = await uploadToCloudinary(req.file.path)
+
         let user = await User.create({
             name,
             email,
             password,
-            dob
+            dob,
+            image: result.secure_url
         })
         user = await User.findById(user._id).select('-password');
 
@@ -58,6 +62,8 @@ export const loginUser = catchAsyncError(async (req, res, next) => {
             return next(new CustomError(400, "email or password is incorrect"))
         }
 
+        user = await User.findOne({ email: user.email }).select("-password")
+
         sendToken(user, 200, res)
     } catch (error) {
         return next(new CustomError(400, "failed to login user"))
@@ -74,3 +80,36 @@ export const logoutUser = catchAsyncError(async (req, res, next) => {
         return next(new CustomError(400, "failed to login user"))
     }
 })
+
+export const profile = catchAsyncError(async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return next(new CustomError(400, "failed to sign in with google"))
+    }
+
+    let user = await User.findOne({ email: req.user._json.email }).select("-password")
+
+    if (user) {
+        return res.status(200).json(user);
+    }
+
+    user = await User.create({
+        name: req.user.displayName,
+        email: req.user._json.email,
+        password: req.user.id,
+        image: req.user._json.picture
+    })
+
+    user = await User.findOne({ email: user.email }).select("-password")
+
+    res.status(200).json(user);
+})
+
+export const logout = (req, res) => {
+    req.logout((err) => {
+        if (err) return next(new CustomError(400, "failed to logout"));
+        res.status(200).json({
+            success: true,
+            message: "logged out successfully"
+        })
+    });
+};
