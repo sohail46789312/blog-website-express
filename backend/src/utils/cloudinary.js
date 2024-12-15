@@ -17,6 +17,6 @@ export const uploadToCloudinary = async (filePath) => {
         fs.unlinkSync(filePath)
         return result;
     } catch (error) {
-        return next(new CustomError(400, "failed to upload to cloudinary"))
+        throw new CustomError(500, error.message)
     }
 };

@@ -30,11 +30,6 @@ const userSchema = new mongoose.Schema(
     { timestamp: true }
 );
 
-userSchema.pre("save", function () {
-    let hashedPassword = bcryptjs.hashSync(this.password, 10)
-    this.password = hashedPassword
-})
-
 userSchema.methods.getJwtToken = function () {
     const token = jwt.sign({id: this._id}, process.env.JWT_SECRET, {
         expiresIn: process.env.JWT_EXPIRE_TIME

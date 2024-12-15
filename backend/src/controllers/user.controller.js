@@ -30,20 +30,33 @@ export const registerUser = catchAsyncError(async (req, res, next) => {
             return next(new CustomError(400, "this email already exists"))
         }
 
-        let result = await uploadToCloudinary(req.file.path)
+        let user
 
-        let user = await User.create({
-            name,
-            email,
-            password,
-            dob,
-            image: result.secure_url
-        })
+        const hashedPassword = await bcryptjs.hash(password, 10);
+
+        if (req.file) {
+            let result = await uploadToCloudinary(req.file.path)
+            user = await User.create({
+                name,
+                email,
+                password: hashedPassword,
+                dob,
+                image: result.secure_url
+            })
+        } else {
+            user = await User.create({
+                name,
+                email,
+                password: hashedPassword,
+                dob,
+            })
+        }
+
         user = await User.findById(user._id).select('-password');
 
         sendToken(user, 200, res)
     } catch (error) {
-        return next(new CustomError(400, "failed to register user"))
+        return next(new CustomError(500, error.message))
     }
 })
 
@@ -52,13 +65,20 @@ export const loginUser = catchAsyncError(async (req, res, next) => {
     try {
         let user = await User.findOne({ email })
 
+
         if (!user) {
             return next(new CustomError(400, "email or password is incorrect"))
         }
 
         let isPasswordMatced = await bcryptjs.compare(password, user.password)
 
+
         if (!isPasswordMatced) {
+            return next(new CustomError(400, "email or password is incorrect"))
+        }
+
+
+        if (user.password !== password) {
             return next(new CustomError(400, "email or password is incorrect"))
         }
 
@@ -82,26 +102,25 @@ export const logoutUser = catchAsyncError(async (req, res, next) => {
 })
 
 export const profile = catchAsyncError(async (req, res) => {
-    if (!req.isAuthenticated()) {
-        return next(new CustomError(400, "failed to sign in with google"))
+    try {
+        if (!req.isAuthenticated()) {
+            return next(new CustomError(400, "failed to sign in with google"))
+        }
+        let user = await User.findOne({ email: req.user._json.email }).select("-password")
+        if (user) {
+            return sendToken(user, 200, res)
+        }
+        user = await User.create({
+            name: req.user.displayName,
+            email: req.user._json.email,
+            password: req.user.id,
+            image: req.user._json.picture
+        })
+        user = await User.findOne({ email: user.email }).select("-password")
+        sendToken(user, 200, res)
+    } catch (error) {
+        return next(new CustomError(400, error.message))
     }
-
-    let user = await User.findOne({ email: req.user._json.email }).select("-password")
-
-    if (user) {
-        return res.status(200).json(user);
-    }
-
-    user = await User.create({
-        name: req.user.displayName,
-        email: req.user._json.email,
-        password: req.user.id,
-        image: req.user._json.picture
-    })
-
-    user = await User.findOne({ email: user.email }).select("-password")
-
-    res.status(200).json(user);
 })
 
 export const logout = (req, res) => {
@@ -113,3 +132,84 @@ export const logout = (req, res) => {
         })
     });
 };
+
+export const deleteUser = catchAsyncError(async (req, res, next) => {
+    try {
+        let user = req.user
+
+        if (!user) {
+            return next(new CustomError(400, "user not found invalid token"))
+        }
+
+        await user.deleteOne()
+
+        res.status(200).json({
+            success: true,
+            message: "user deleted successfully"
+        })
+    } catch (error) {
+        return next(new CustomError(500, error.message))
+    }
+})
+
+export const updateUser = catchAsyncError(async (req, res, next) => {
+    let { name, dob } = req.body
+    try {
+        let userId = req.user._id
+        let user
+        if (req.file) {
+            let result = await uploadToCloudinary(req.file.path)
+            user = await User.findByIdAndUpdate(
+                userId,
+                {
+                    name,
+                    image: result.secure_url,
+                    dob
+                }
+            )
+        } else {
+            user = await User.findByIdAndUpdate(
+                userId,
+                {
+                    name,
+                    dob
+                }
+            )
+        }
+
+        user = await User.findById(user._id).select('-password');
+
+        sendToken(user, 200, res)
+    } catch (error) {
+        return next(new CustomError(500, error.message))
+    }
+})
+
+export const changePassword = catchAsyncError(async (req, res, next) => {
+    try {
+        let { oldPassword, newPassword, confirmPassword } = req.body
+        let userId = req.user._id
+        let user = await User.findById(userId)
+        if (!user) {
+            return next(new CustomError(400, "user not found invalid token"))
+        }
+        let isPasswordMatced = await bcryptjs.compare(oldPassword, user.password)
+
+        if (!isPasswordMatced) {
+            return next(new CustomError(400, "old password is is ncorrect"))
+        }
+
+        if (newPassword !== confirmPassword) {
+            return next(new CustomError(400, "password does not match"))
+        }
+
+        const hashedPassword = await bcryptjs.hash(newPassword, 10);
+
+        user.password = hashedPassword;
+        await user.save();
+
+        res.status(200).json(user)
+    } catch (error) {
+        return next(new CustomError(500, error.message))
+    }
+})

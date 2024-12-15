@@ -33,7 +33,11 @@ app.use(express.urlencoded({ extended: true }))
 
 //set routes
 import userRouter from "./src/routes/user.route.js"
+import postRouter from "./src/routes/post.route.js";
+import commentRouter from "./src/routes/comment.route.js";
 app.use("/api/v1/user", userRouter)
+app.use("/api/v1/post", postRouter)
+app.use("/api/v1/comment", commentRouter)
 
 // use errorMiddleware
 import { errorMiddleware } from "./src/middlewares/error.middleware.js"
