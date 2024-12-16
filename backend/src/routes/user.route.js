@@ -1,7 +1,7 @@
 import express from "express"
 import { isLoggenIn } from "../middlewares/auth.middleware.js"
 import upload from "../utils/multer.js"
-import { getUser, loginUser, logoutUser, registerUser, profile, logout, deleteUser, updateUser, changePassword } from '../controllers/user.controller.js';
+import { getUser, loginUser, logoutUser, registerUser, profile, logout, deleteUser, updateUser, changePassword, forgotPassword, resetPassword } from '../controllers/user.controller.js';
 import passport from 'passport';
 const router = express.Router()
 
@@ -12,6 +12,8 @@ router.get("/local/logout", isLoggenIn, logoutUser)
 router.delete("/delete", isLoggenIn, deleteUser)
 router.put("/update", isLoggenIn, upload.single("image"), updateUser)
 router.put("/changepassword", isLoggenIn, changePassword)
+router.post("/forgotpassword", forgotPassword)
+router.post("/resetpassword/:token", resetPassword)
 
 router.get('/google', (req, res) => {
     passport.authenticate('google', {

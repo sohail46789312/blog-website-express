@@ -5,7 +5,16 @@ import CustomError from "../utils/customError.js";
 
 export const getAllPosts = catchAsyncError(async (req, res, next) => {
     try {
-        const posts = await Post.find()
+        console.log(req.query.keyword)
+        let n = req.query.page || 1;
+        let limit = 10;
+
+        const posts = await Post.find({
+            title: {
+                $regex: req.query.keyword,
+                $options: "i"
+            }
+        }).limit(limit).skip((n - 1) * limit);
 
         res.status(200).json(posts)
     } catch (error) {
@@ -114,7 +123,7 @@ export const dislikePost = catchAsyncError(async (req, res, next) => {
 export const deletePost = catchAsyncError(async (req, res, next) => {
     try {
         let post = await Post.findById(req.params.id)
-        if(!post) {
+        if (!post) {
             return next(new CustomError(400, "post not found with this id"))
         }
 
