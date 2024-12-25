@@ -15,7 +15,7 @@ const transporter = nodemailer.createTransport({
 
 async function sendMail(options) {
   const info = await transporter.sendMail({
-    from: '"Blog Express" syedsohailshah1947@gmail.com', 
+    from: '"title" <your mail>', 
     to: options.email   ,
     subject: options.subject, 
     text: options.message, 
